@@ -1,6 +1,6 @@
 services:
   - type: web
     name: road-management
-    env: java
+    env: native
     buildCommand: mvn clean package
     startCommand: java -jar target/*.jar
