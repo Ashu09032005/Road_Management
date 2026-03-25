@@ -1,0 +1,12 @@
+POST http://localhost:8080/api/route
+Content-Type: application/json
+
+{
+  "busId": 1,
+  "capacity": 50,
+  "currentPassengers": 10,
+  "startLat": 28.7041,
+  "startLon": 77.1025,
+  "endLat": 28.6139,
+  "endLon": 77.2090
+}
