@@ -2,8 +2,8 @@ package com.roadmanagement.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.http.*;
 
 import java.util.Map;
 import java.util.List;
@@ -22,10 +22,7 @@ public class GeographyAIService {
     @Value("${groq.temperature}")
     private double temperature;
 
-    private final WebClient webClient = WebClient.builder()
-            .baseUrl("https://api.groq.com/openai/v1")
-            .defaultHeader("Content-Type", "application/json")
-            .build();
+    private final RestTemplate restTemplate = new RestTemplate();
 
     public String getAnswer(String question) {
 
@@ -35,7 +32,7 @@ public class GeographyAIService {
                         "Focus on terrain, road connectivity, disaster risk, and traffic planning.\n\n" +
                         "Question: " + question;
 
-        // Build request body properly
+        // Build request body
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("model", model);
         requestBody.put("temperature", temperature);
@@ -48,28 +45,36 @@ public class GeographyAIService {
 
         try {
 
-            Map response = webClient.post()
-                    .uri("/chat/completions")
-                    .header("Authorization", "Bearer " + groqApiKey)
-                    .bodyValue(requestBody)
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .block();
+            // Headers
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(groqApiKey);
 
-            if (response == null || !response.containsKey("choices")) {
+            HttpEntity<Map<String, Object>> entity =
+                    new HttpEntity<>(requestBody, headers);
+
+            // API call
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    "https://api.groq.com/openai/v1/chat/completions",
+                    HttpMethod.POST,
+                    entity,
+                    Map.class
+            );
+
+            Map responseBody = response.getBody();
+
+            if (responseBody == null || !responseBody.containsKey("choices")) {
                 return "No valid response from AI.";
             }
 
-            List choices = (List) response.get("choices");
+            List choices = (List) responseBody.get("choices");
             Map firstChoice = (Map) choices.get(0);
             Map message = (Map) firstChoice.get("message");
 
             return message.get("content").toString();
 
-        } catch (WebClientResponseException e) {
-            return "Groq API Error: " + e.getStatusCode() + " - " + e.getResponseBodyAsString();
         } catch (Exception e) {
-            return "Unexpected error: " + e.getMessage();
+            return "Error: " + e.getMessage();
         }
     }
 }
